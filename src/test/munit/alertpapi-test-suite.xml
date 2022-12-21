@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:munit="http://www.mulesoft.org/schema/mule/munit" xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd">
+	<munit:config name="alertpapi-test-suite.xml" />
+	<munit:test name="alertpapi-test-suite-alertpapiSub_FlowTest" doc:id="d6a6b5a7-e0f3-44a9-923f-c518a4591dd7" description="Test">
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="4d5f472e-9a6a-44de-9637-077c70390fd4" processor="db:insert">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Insert" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="c3f47bab-32f1-4b22-8936-c5e261511dbe" attributeName="doc:id" />
+					<munit-tools:with-attribute whereValue="Database_Config" attributeName="config-ref" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value='#[[{&#10;  "ALERT_TRANSACTION_ID": 24,&#10;  "SUBSCRIPTION_ID": 188,&#10;  "DELAY_TYPE_FLAG": "On time",&#10;  "NOTIFICATION_STATUS": "Notification received",&#10;  "NOTIFICATION_FAILURE_DETAIL": "Engine repair",&#10;  "DELAY_TIME": 35&#10;},{&#10;  "ALERT_TRANSACTION_ID": 25,&#10;  "SUBSCRIPTION_ID": 189,&#10;  "DELAY_TYPE_FLAG": "On time",&#10;  "NOTIFICATION_STATUS": "Notification received",&#10;  "NOTIFICATION_FAILURE_DETAIL": "Engine repair",&#10;  "DELAY_TIME": 35&#10;}&#10;]]' />
+				</munit-tools:then-return>
+				<munit-tools:then-call flow="alertpapiFlow1" />
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="65f7b86e-e044-42cb-97ae-04af8aa6d648">
+				<munit:payload value='#[[{&#10;  "ALERT_TRANSACTION_ID": 24,&#10;  "SUBSCRIPTION_ID": 188,&#10;  "DELAY_TYPE_FLAG": "On time",&#10;  "NOTIFICATION_STATUS": "Notification received",&#10;  "NOTIFICATION_FAILURE_DETAIL": "Engine repair",&#10;  "DELAY_TIME": 35&#10;},{&#10;  "ALERT_TRANSACTION_ID": 25,&#10;  "SUBSCRIPTION_ID": 189,&#10;  "DELAY_TYPE_FLAG": "On time",&#10;  "NOTIFICATION_STATUS": "Notification received",&#10;  "NOTIFICATION_FAILURE_DETAIL": "Engine repair",&#10;  "DELAY_TIME": 35&#10;}&#10;]]' mediaType="application/java" />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to alertpapiSub_Flow" doc:id="937e7663-bd14-4c6f-a1e8-7565e7dc401e" name="alertpapiSub_Flow"/>
+		</munit:execution>
+	</munit:test>
+	<munit:test name="alertpapi-test-suite-alertpapiFlow1Test" doc:id="c6f8e189-3bc0-4180-a3d8-0c0a27b319e0" description="Test">
+		<munit:behavior>
+			<munit-tools:mock-when doc:name="Mock when" doc:id="10596cad-b21c-46c5-8305-aa3f7e08c637" processor="choice">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="Choice" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="7664f8ba-8ad0-4cc7-9486-72dff97814b3" attributeName="doc:id" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value='#[{        "body": {        "GetArrBoardWithDetailsResponse": {           "GetStationBoardResult": {              "generatedAt": "2022-12-14T16:19:26.0630083+00:00",               "locationName": "Basingstoke",            "crs": "BSK",              "filterLocationName": "London Waterloo",              "filtercrs": "WAT",               "nrccMessages": {                   "message": "\nTrains are being disrupted on some South Western Railway routes. More details can be found in &lt;a href=\"www.nationalrail.co.uk/service_disruptions/313073.aspx\"&gt;Latest Travel News.&lt;/a&gt;",                "message": "\nDue to a fault on a train between Exeter St Davids and Newton Abbot trains may be cancelled, delayed or revised. More details can be found in &lt;a href=\"http://nationalrail.co.uk/service_disruptions/313356.aspx\"&gt;Latest Travel News.&lt;/a&gt;"            },                "platformAvailable": "true",             "trainServices": {                    "service": {                      "sta": "16:37",                       "eta": "18:34"                                                                        }}}}}}]' />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<flow-ref doc:name="Flow-ref to alertpapiFlow1" doc:id="e154d5db-15fa-49b7-8e07-0aba5e24accf" name="alertpapiFlow1"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-equals doc:name="Assert equals" doc:id="0ffec628-12c5-407a-96e9-6a1ddd945b04" actual="#[payload]" expected='#[{&#10;	"From" : "NR Railways",&#10;	"To" : "dav@email.com",&#10;	"Message": " Train is delayed"&#10;}]'/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="alertpapi-test-suite-alertpapi-ontimeFlowTest" doc:id="007d404b-f3b3-44bf-ace7-7c081ef92396" description="Test" >
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="0ba8c204-7f90-4878-a9b0-0bc58a421b5d" processor="http:request" >
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="GET" attributeName="method" />
+					<munit-tools:with-attribute whereValue="Requesting subscribed users" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="70088df7-76ef-40da-89f2-f0c83737fce2" attributeName="doc:id" />
+					<munit-tools:with-attribute whereValue="HTTP_Request_configuration1" attributeName="config-ref" />
+					<munit-tools:with-attribute whereValue="/getsubscribedusers" attributeName="path" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value='#[[&#10;    {&#10;        "EMAIL_ID": "",&#10;        "SUBSCRIPTION_ID": 5272,&#10;        "SOURCE_LOCATION": "ABK",&#10;        &#10;        "LAST_NAME": "",&#10;        "DESTINATION_LOCATION": "ABW",&#10;        &#10;        "FIRST_NAME": "",&#10;       &#10;    },&#10;    {&#10;        "EMAIL_ID": "",&#10;        "SUBSCRIPTION_ID": 5273,&#10;        "SOURCE_LOCATION": "ABK",&#10;        &#10;        "LAST_NAME": "",&#10;        "DESTINATION_LOCATION": "WEY",&#10;        &#10;        "FIRST_NAME": "",&#10;        &#10;    }]]' />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="5b1168a4-6b78-45ce-9186-ba93693bfa16" >
+				<munit:payload value='#[{        "body": {        "GetArrBoardWithDetailsResponse": {           "GetStationBoardResult": {              "generatedAt": "2022-12-14T16:19:26.0630083+00:00",               "locationName": "Basingstoke",            "crs": "BSK",              "filterLocationName": "London Waterloo",              "filtercrs": "WAT",               "nrccMessages": {                   "message": "\nTrains are being disrupted on some South Western Railway routes. More details can be found in &lt;a href=\"www.nationalrail.co.uk/service_disruptions/313073.aspx\"&gt;Latest Travel News.&lt;/a&gt;",                "message": "\nDue to a fault on a train between Exeter St Davids and Newton Abbot trains may be cancelled, delayed or revised. More details can be found in &lt;a href=\"http://nationalrail.co.uk/service_disruptions/313356.aspx\"&gt;Latest Travel News.&lt;/a&gt;"            },                "platformAvailable": "true",             "trainServices": {                    "service": {                      "sta": "16:37",                       "eta": "On time"                                                                        }}}}}}]' encoding="UTF-8" />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to alertpapiFlow" doc:id="70d7d460-2385-49bd-b7ca-b9c38b299157" name="alertpapiFlow" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-equals doc:name="Assert equals" doc:id="35c65cb1-d889-49bc-bbe0-6b3e3510abb2" actual="#[payload]" expected='#[[&#10;  {&#10;    "Message": "Train is on time",&#10;    "User Details": {&#10;      "First_Name": "Harry",&#10;      "Last_Name": "New",&#10;      "E_mail": "example@email.com",&#10;      "Source_location": "BSK",&#10;      "Destination_Location": "WAT"&#10;    }&#10;  },&#10;  {&#10;    "Message": "Train is on time",&#10;    "User Details": {&#10;      "First_Name": "Harryew",&#10;      "Last_Name": "New",&#10;      "E_mail": "example1@email.com",&#10;      "Source_location": "BSK",&#10;      "Destination_Location": "WAT"&#10;    }&#10;  }&#10;]]'/>
+		</munit:validation>
+	</munit:test>
+	<munit:test name="alertpapi-test-suite-alertpapiFlowTest" doc:id="8e3e470d-af40-4aaf-8a08-87948bf7d7b0" description="Test" >
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="3253ecf1-aee9-4c7a-9b5b-271442273400" processor="http:request" >
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="GET" attributeName="method" />
+					<munit-tools:with-attribute whereValue="Requesting subscribed users" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="70088df7-76ef-40da-89f2-f0c83737fce2" attributeName="doc:id" />
+					<munit-tools:with-attribute whereValue="HTTP_Request_configuration1" attributeName="config-ref" />
+					<munit-tools:with-attribute whereValue="/getsubscribedusers" attributeName="path" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:payload value='#[[&#10;    {&#10;        "EMAIL_ID": "",&#10;        "SUBSCRIPTION_ID": 5272,&#10;        "SOURCE_LOCATION": "ABK",&#10;        &#10;        "LAST_NAME": "",&#10;        "DESTINATION_LOCATION": "ABW",&#10;        &#10;        "FIRST_NAME": "",&#10;       &#10;    },&#10;    {&#10;        "EMAIL_ID": "",&#10;        "SUBSCRIPTION_ID": 5273,&#10;        "SOURCE_LOCATION": "ABK",&#10;        &#10;        "LAST_NAME": "",&#10;        "DESTINATION_LOCATION": "WEY",&#10;        &#10;        "FIRST_NAME": "",&#10;        &#10;    }]]' />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<munit:set-event doc:name="Set Event" doc:id="9092046b-c3b4-4c09-91c0-dcf8d65b30fd" >
+				<munit:payload value='#[{        "body": {        "GetArrBoardWithDetailsResponse": {           "GetStationBoardResult": {              "generatedAt": "2022-12-14T16:19:26.0630083+00:00",               "locationName": "Basingstoke",            "crs": "BSK",              "filterLocationName": "London Waterloo",              "filtercrs": "WAT",               "nrccMessages": {                   "message": "\nTrains are being disrupted on some South Western Railway routes. More details can be found in &lt;a href=\"www.nationalrail.co.uk/service_disruptions/313073.aspx\"&gt;Latest Travel News.&lt;/a&gt;",                "message": "\nDue to a fault on a train between Exeter St Davids and Newton Abbot trains may be cancelled, delayed or revised. More details can be found in &lt;a href=\"http://nationalrail.co.uk/service_disruptions/313356.aspx\"&gt;Latest Travel News.&lt;/a&gt;"            },                "platformAvailable": "true",             "trainServices": {                    "service": {                      "sta": "16:37",                       "eta": "18:34"                                                                        }}}}}}]' encoding="UTF-8" />
+			</munit:set-event>
+			<flow-ref doc:name="Flow-ref to alertpapiFlow" doc:id="bb197f1c-989e-49c6-ac90-56bf2216f0cb" name="alertpapiFlow" />
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-equals doc:name="Assert equals" doc:id="3dc38292-0fd6-48c8-91bc-45088a469321" actual="#[payload]" expected='#[{&#10;  "Message": "Train is delayed.You will receive the mail before 30 minutes of your train service "&#10;}]' />
+		</munit:validation>
+	</munit:test>
+	<munit:test name="alertpapi-test-suite-alertpapiFlowTest1" doc:id="2bb7cafd-a46e-4619-9729-23fc7e7f3a0a" description="Test">
+		<munit:behavior >
+			<munit-tools:mock-when doc:name="Mock when" doc:id="8a05033d-f24b-454a-a48e-3f7882715a50" processor="http:request">
+				<munit-tools:with-attributes >
+					<munit-tools:with-attribute whereValue="GET" attributeName="method" />
+					<munit-tools:with-attribute whereValue="Requesting subscribed users" attributeName="doc:name" />
+					<munit-tools:with-attribute whereValue="70088df7-76ef-40da-89f2-f0c83737fce2" attributeName="doc:id" />
+					<munit-tools:with-attribute whereValue="HTTP_Request_configuration1" attributeName="config-ref" />
+					<munit-tools:with-attribute whereValue="/getsubscribedusers" attributeName="path" />
+				</munit-tools:with-attributes>
+				<munit-tools:then-return >
+					<munit-tools:error typeId="ANY" />
+				</munit-tools:then-return>
+			</munit-tools:mock-when>
+		</munit:behavior>
+		<munit:execution >
+			<try doc:name="Try" doc:id="3f1933d4-2b8d-48c5-ac84-8f24b05b3e61" >
+				<flow-ref doc:name="Flow-ref to alertpapiFlow" doc:id="b63da48e-17c0-4611-a977-3954be9022af" name="alertpapiFlow" />
+				<error-handler >
+					<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="b886317e-2a19-486b-9be9-c933394b7ce4" >
+						<logger level="INFO" doc:name="Logger" doc:id="8e1480ed-f98d-469e-864d-df3f15c2ea15" message="Continue flow"/>
+					</on-error-continue>
+				</error-handler>
+			</try>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that" doc:id="32ea1065-714b-4f54-826e-d685c0228814" expression="#[payload]" is="#[MunitTools::notNullValue()]"/>
+		</munit:validation>
+	</munit:test>
+
+</mule>

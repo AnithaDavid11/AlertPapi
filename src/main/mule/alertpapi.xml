@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:os="http://www.mulesoft.org/schema/mule/os"
+	xmlns:validation="http://www.mulesoft.org/schema/mule/validation"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ftp="http://www.mulesoft.org/schema/mule/ftp" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/ftp http://www.mulesoft.org/schema/mule/ftp/current/mule-ftp.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd">
+	<flow name="alertpapiFlow" doc:id="67cab266-f4dd-4090-b5cd-2d1f136d0114" >
+		<http:listener doc:name="Listener" doc:id="ee06981b-3599-42de-90e0-3dc8a6656130" config-ref="HTTP_Listener_config" path="/papi"/>
+		<logger level="INFO" doc:name="Initial Logger" doc:id="3a2b4783-c9e7-42fd-aeaf-caad87dd2482" message="Logger started"/>
+		<os:store doc:name="Store" doc:id="5b7035a8-0544-4db3-91b4-ae9ef55b1e55" key="trainpayload" objectStore="Object_store" />
+		<set-variable value="#[payload.body.GetArrBoardWithDetailsResponse.GetStationBoardResult.crs]" doc:name="Set Variable a(source from train api)" doc:id="fb8d4825-bee7-4635-b21b-8a92496a4999" variableName="a" />
+		<set-variable value="#[payload.body.GetArrBoardWithDetailsResponse.GetStationBoardResult.filtercrs]" doc:name="Set Variable b(destination from train api)" doc:id="ae425886-884f-468d-9680-ad20c75e6f9c" variableName="b" />
+		<set-variable value="#[payload]" doc:name="Set Variable train=payload" doc:id="6a15ff53-2ba3-42df-b912-d0298da12c32" variableName="train" />
+		<set-variable value="#[vars.train.body.GetArrBoardWithDetailsResponse.GetStationBoardResult.trainServices.service.eta]" doc:name="Set Variable eta" doc:id="e273bbaf-ea15-4f68-aba4-4c692d4763c1" variableName="eta" />
+		<set-variable value="#[vars.train.body.GetArrBoardWithDetailsResponse.GetStationBoardResult.trainServices.service.sta]" doc:name="Set Variable sta" doc:id="ff7f300b-171c-4610-8a6a-1fbeb8124760" variableName="sta"/>
+		<choice doc:name="Choice" doc:id="fe62b8cd-3dd2-48e4-9f0f-61973d00a594" >
+			<when expression='#[vars.eta != "On time" and vars.eta != null]' >
+				<http:request method="GET" doc:name="Requesting subscribed users" doc:id="70088df7-76ef-40da-89f2-f0c83737fce2" config-ref="HTTP_Request_configuration1" path="/getsubscribedusers" />
+				<ee:transform doc:name="Transform Message" doc:id="9d4c3831-bde3-4f57-95c4-2c209f705e35">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map()->
+{
+	"SOURCE_LOCATION" : $.SOURCE_LOCATION,
+	"DESTINATION_LOCATION" : $.DESTINATION_LOCATION,
+	"FIRST_NAME" : $.FIRST_NAME,
+	"LAST_NAME" : $.LAST_NAME,
+	"EMAIL_ID" : $.EMAIL_ID,
+	"SUBSCRIPTION_ID" :$.SUBSCRIPTION_ID
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="filtering users for selected source and destination" doc:id="f4ef56d2-8a17-4984-9228-00ee25a76308" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload filter($.SOURCE_LOCATION == vars.a and $.DESTINATION_LOCATION == vars.b)]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="#[payload]" doc:name="Set Variable user payload" doc:id="165fab31-dca6-4510-b5d4-b9c7eab92ad5" variableName="user" />
+				<os:store doc:name="Store" doc:id="5bf26fcb-845e-4d07-a10b-925f4db0c5bd" key="userpayload" objectStore="Object_store"/>
+				<flow-ref doc:name="Flowreference to alertpapiSub_Flow" doc:id="6c0ff93b-54c3-4035-b381-fb8048a32425" name="alertpapiSub_Flow" />
+				<ee:transform doc:name="Transform Message" doc:id="c47d93c4-62a9-4387-b80d-db6e8a771b34">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Train is delayed.You will receive the mail before 30 minutes of your train service "
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression="#[vars.eta  == null]">
+				<ee:transform doc:name="Transform Message" doc:id="11383fbb-eafd-4b31-9501-20369f2dd098" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Train service is not available at this moment of time. Try again later"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[vars.eta == "On time" and vars.eta != null]'>
+				<http:request method="GET" doc:name="Requesting subscribed users" doc:id="9361c2f2-a99c-4aec-b5da-45731beee5a9" config-ref="HTTP_Request_configuration1" path="/getsubscribedusers" />
+				<ee:transform doc:name="Transform Message" doc:id="4f8e33b7-d6d3-41e9-ad61-9f74a67b4a42">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map()->
+{
+	"SOURCE_LOCATION" : $.SOURCE_LOCATION,
+	"DESTINATION_LOCATION" : $.DESTINATION_LOCATION,
+	"FIRST_NAME" : $.FIRST_NAME,
+	"LAST_NAME" :$.LAST_NAME,
+	"EMAIL_ID" : $.EMAIL_ID,
+	"SUBSCRIPTION_ID" :$.SUBSCRIPTION_ID
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="Transform Message" doc:id="4d978a28-9a5e-4223-b16e-8d164e56ca70">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<ee:transform doc:name="filtering users for selected source and destination" doc:id="bfc37e0d-9de9-4ecb-8d2a-04d9aafefec3">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload filter($.SOURCE_LOCATION == vars.a and $.DESTINATION_LOCATION == vars.b)]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<set-variable value="#[payload]" doc:name="Set Variable user payload" doc:id="1f81f5f7-d331-4ae2-962f-13bbbb43eadf" variableName="user" />
+				<ee:transform doc:name="on time message" doc:id="ce2a6f05-8fd7-45ff-a9b0-9976b457fa48">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+
+payload map()->
+{
+	"Message" : "Train is on time",
+	"User Details" : {
+	"First_Name" : $.FIRST_NAME,
+	"Last_Name" : $.LAST_NAME,
+	"E_mail" : $.EMAIL_ID,
+	"Source_location": $.SOURCE_LOCATION,
+	"Destination_Location" : $.DESTINATION_LOCATION	
+	
+	}
+	}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger payload" doc:id="887e32f8-737c-4f3e-a384-d9fe2036cb3b" message="All train is on time" />
+			</when>
+		</choice>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="c110261a-c029-4b6f-aae9-02e65786d9cc" type="ANY">
+				<logger level="INFO" doc:name="Logger" doc:id="0a928296-54ff-4df8-aa8b-b7a2975de3f7" message="Error in flow"/>
+			</on-error-continue>
+		</error-handler>
+	</flow>
+	<sub-flow name="alertpapiSub_Flow" doc:id="44229ebc-f777-41e2-a399-cee2f9979797" >
+		<foreach doc:name="For Each" doc:id="9311d328-7679-48ad-bb2d-82b300872e5a" >
+			<choice doc:name="Choice" doc:id="e57388f5-6774-4390-9935-db389e051f02">
+				<when expression="#[(vars.a == payload.SOURCE_LOCATION) and (vars.b == payload.DESTINATION_LOCATION)]">
+				<set-variable value="#[payload]" doc:name="Set Variable" doc:id="c299da9d-90b6-49de-9b12-07ff5681670b" variableName="entrypayload"/>
+				<db:insert doc:name="Insert" doc:id="c3f47bab-32f1-4b22-8936-c5e261511dbe" config-ref="Database_Config">
+					<db:sql><![CDATA[Insert into nrs.ALERT(ALERT_TRANSACTION_ID,SUBSCRIPTION_ID,DELAY_TYPE_FLAG,NOTIFICATION_STATUS,NOTIFICATION_FAILURE_DETAIL,DELAY_TIME) values(:ALERT_TRANSACTION_ID,:SUBSCRIPTION_ID,:DELAY_TYPE_FLAG,:NOTIFICATION_STATUS,:NOTIFICATION_FAILURE_DETAIL,:DELAY_TIME)]]></db:sql>
+					<db:input-parameters><![CDATA[#[output application/java
+---
+{
+	NOTIFICATION_FAILURE_DETAIL: (vars.train.body.GetArrBoardWithDetailsResponse.GetStationBoardResult.nrccMessages.message),
+	SUBSCRIPTION_ID: vars.entrypayload.SUBSCRIPTION_ID,
+	DELAY_TYPE_FLAG: "Delayed",
+	DELAY_TIME: (vars.train.body.GetArrBoardWithDetailsResponse.GetStationBoardResult.trainServices.service.eta as String  - vars.train.body.GetArrBoardWithDetailsResponse.GetStationBoardResult.trainServices.service.sta as String) as Number,
+	NOTIFICATION_STATUS: "Notification sent",
+	ALERT_TRANSACTION_ID: randomInt(100)
+	}]]]></db:input-parameters>
+				</db:insert>
+				<flow-ref doc:name="Flow Reference" doc:id="d4c62dcf-f464-4c3e-afbe-2353144248a7" name="alertpapiFlow1" />
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="f749d68a-652a-4545-997e-066c01ce765d">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message" : "Default"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				</otherwise>
+		</choice>
+		</foreach>
+	</sub-flow>
+	<flow name="alertpapiFlow1" doc:id="14c7c052-783f-4466-a0f7-836055d39089" >
+		<scheduler doc:name="Scheduler" doc:id="4bc82d39-0d3a-4130-82d4-18cfdf08fa26" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="30" timeUnit="MINUTES"/>
+			</scheduling-strategy>
+		</scheduler>
+		<choice doc:name="Choice" doc:id="7664f8ba-8ad0-4cc7-9486-72dff97814b3" >
+			<when expression='#[now() as String { format:"hh:mm"} == (vars.eta as String - "00:30:00" as String)]'>
+				<ee:transform doc:name="Delay message" doc:id="a67eef4c-01f5-4661-a543-562f6945897a">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"From" : "NR Railways",
+	"To" : vars.user.EMAIL_ID,
+	"Message": " Train is delayed"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger payload" doc:id="7460919e-7823-4639-8ec7-c2a60d742104" message="#[payload]" />
+			</when>
+			<when expression='#[now() as String { format:"hh:mm"} != (vars.eta - "00:30:00" as String)]'>
+				<logger level="INFO" doc:name="Logger" doc:id="928f7707-235e-4e6c-9b75-7cd53a5c8c14" message="Train is delayed" />
+			</when>
+		</choice>
+	</flow>
+</mule>

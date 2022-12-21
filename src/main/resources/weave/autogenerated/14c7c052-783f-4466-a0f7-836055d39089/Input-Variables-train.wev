@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_14c7c052_783f_4466_a0f7_836055d39089_Input_Variables_train = Any
+
